@@ -3,23 +3,29 @@ import streamlit as st
 import pyttsx3
 import speech_recognition as sr
 
+# Robust TTS engine initialization
+try:
+    engine = pyttsx3.init()
+except Exception as e:
+    engine = None
+    st.warning("Text-to-speech is unavailable on this system.")
 
-engine = pyttsx3.init()
 engine_lock = threading.Lock()
 
-
 def speak(text: str) -> None:
-    def _speak():
-        with engine_lock:
-            engine.say(text)
-            engine.runAndWait()
-    threading.Thread(target=_speak).start()
-
+    if engine:
+        def _speak():
+            with engine_lock:
+                engine.say(text)
+                engine.runAndWait()
+        threading.Thread(target=_speak).start()
+    else:
+        st.info("TTS engine not available.")
 
 def stop_speech() -> None:
-    with engine_lock:
-        engine.stop()
-
+    if engine:
+        with engine_lock:
+            engine.stop()
 
 def listen_for_stop() -> None:
     recognizer = sr.Recognizer()
@@ -28,11 +34,10 @@ def listen_for_stop() -> None:
         try:
             audio = recognizer.listen(source, timeout=5)
             command = recognizer.recognize_google(audio).lower()
-            if "stop" in command:
+            if "stop" in command and engine:
                 stop_speech()
         except Exception:
             pass
-
 
 def listen() -> str:
     recognizer = sr.Recognizer()
